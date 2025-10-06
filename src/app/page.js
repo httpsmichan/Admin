@@ -1,46 +1,36 @@
 "use client";
 import { useState } from "react";
-import { uploadImage } from "@/lib/cloudinary";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const [file, setFile] = useState(null);
-  const [url, setUrl] = useState("");
+  const [code, setCode] = useState("");
+  const router = useRouter();
 
-  const handleUpload = async () => {
-    if (!file) return alert("Please select an image first.");
-
-    try {
-      // 1. Upload to Cloudinary
-      const imageUrl = await uploadImage(file);
-      setUrl(imageUrl);
-
-      // 2. Save the link to Firestore
-      await addDoc(collection(db, "sample"), {
-        imageUrl,
-        createdAt: serverTimestamp(),
-      });
-
-      alert("✅ Image uploaded and saved to Firestore!");
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("❌ Failed to upload or save the image.");
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      if (code === "888877776666") {
+        router.push("/admin/dashboard"); 
+      } else {
+        alert("❌ Invalid Code");
+      }
     }
   };
 
   return (
-    <main style={{ padding: 20 }}>
-      <h1>Upload to Firestore Sample</h1>
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-      <button onClick={handleUpload}>Upload</button>
-
-      {url && (
-        <div>
-          <p>Saved Image:</p>
-          <img src={url} alt="Uploaded" width={200} />
-        </div>
-      )}
-    </main>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="w-full max-w-sm p-6 bg-white rounded-2xl shadow-lg text-center">
+        <input
+          type="password"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter code"
+        />
+        <p className="mt-4 text-sm text-gray-600">
+          Enter the 8-12 character code:
+        </p>
+      </div>
+    </div>
   );
 }
