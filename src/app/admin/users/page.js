@@ -1,9 +1,9 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import {
   collection,
   getDocs,
-  addDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -12,9 +12,9 @@ import { db } from "@/lib/firebase";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ username: "", email: "" });
   const [editingUser, setEditingUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   // 🔹 Load users
   const fetchUsers = async () => {
@@ -37,37 +37,14 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  // 🔹 Add new user
-  const handleAddUser = async () => {
-    if (!newUser.username || !newUser.email) return;
-    try {
-      await addDoc(collection(db, "users"), {
-        username: newUser.username,
-        email: newUser.email,
-        isActive: true,
-      });
-      setNewUser({ username: "", email: "" });
-      fetchUsers();
-    } catch (error) {
-      console.error("Error adding user:", error);
-    }
-  };
-
-  // 🔹 Toggle active
-  const handleToggleActive = async (id, currentStatus) => {
-    try {
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, { isActive: !currentStatus });
-      fetchUsers();
-    } catch (error) {
-      console.error("Error updating user:", error);
-    }
-  };
-
   // 🔹 Start editing user
   const handleEdit = (user) => {
-    // clone to avoid editing directly in state
     setEditingUser({ ...user });
+  };
+
+  // 🔹 Cancel editing
+  const handleCancel = () => {
+    setEditingUser(null);
   };
 
   // 🔹 Save updated user
@@ -96,130 +73,119 @@ export default function UsersPage() {
     }
   };
 
-  if (loading) return <p>Loading users...</p>;
+  // 🔹 Filter users based on search input
+  const filteredUsers = users.filter((u) =>
+    Object.values(u).some((val) =>
+      String(val).toLowerCase().includes(search.toLowerCase())
+    )
+  );
+
+  if (loading) return <p className="text-sm text-gray-500">Loading users...</p>;
 
   return (
-    <div>
-      <h2 className="text-xl text-center font-bold text-gray-700 mb-4">Manage Users</h2>
+    <div className="p-4">
+      <h2 className="text-lg text-center font-bold text-gray-700 mb-4">
+        Manage Users
+      </h2>
 
-      {/* Add User */}
-      <div className="mb-6 flex gap-2">
+      {/* Search Input */}
+      <div className="mb-4 text-sm">
         <input
           type="text"
-          placeholder="Username"
-          value={newUser.username}
-          onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-          className="px-3 py-2 border rounded-lg"
+          placeholder="Search users..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-3 py-2 border rounded text-sm"
         />
-        <input
-          type="email"
-          placeholder="Email"
-          value={newUser.email}
-          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-          className="px-3 py-2 border rounded-lg"
-        />
-        <button
-          onClick={handleAddUser}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Add
-        </button>
       </div>
 
-      {/* User List */}
-      <table className="w-full bg-white shadow rounded-lg overflow-hidden">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="px-4 py-2 text-left">Username</th>
-            <th className="px-4 py-2 text-left">Email</th>
-            <th className="px-4 py-2">Active</th>
-            <th className="px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="border-t">
-              <td className="px-4 py-2">
-                {editingUser?.id === u.id ? (
-                  <input
-                    type="text"
-                    value={editingUser.username}
-                    onChange={(e) =>
-                      setEditingUser({
-                        ...editingUser,
-                        username: e.target.value,
-                      })
-                    }
-                    className="px-2 py-1 border rounded"
-                  />
-                ) : (
-                  u.username
-                )}
-              </td>
-              <td className="px-4 py-2">
-                {editingUser?.id === u.id ? (
-                  <input
-                    type="email"
-                    value={editingUser.email}
-                    onChange={(e) =>
-                      setEditingUser({
-                        ...editingUser,
-                        email: e.target.value,
-                      })
-                    }
-                    className="px-2 py-1 border rounded"
-                  />
-                ) : (
-                  u.email
-                )}
-              </td>
-              <td className="px-4 py-2 text-center">
-                <button
-                  onClick={() => handleToggleActive(u.id, u.isActive)}
-                  className={`px-3 py-1 rounded-lg ${
-                    u.isActive
-                      ? "bg-green-500 text-white"
-                      : "bg-red-500 text-white"
-                  }`}
-                >
-                  {u.isActive ? "Active" : "Inactive"}
-                </button>
-              </td>
-              <td className="px-4 py-2 text-center space-x-2">
-                {editingUser?.id === u.id ? (
-                  <button
-                    onClick={handleUpdate}
-                    className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Save
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleEdit(u)}
-                    className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-                  >
-                    Edit
-                  </button>
-                )}
-                <button
-                  onClick={() => handleDelete(u.id)}
-                  className="px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-900"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-
-          {users.length === 0 && (
+      {/* Scrollable User Table */}
+      <div className="overflow-x-auto border border-gray-300 rounded-lg">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-200">
             <tr>
-              <td colSpan="4" className="text-center py-4 text-gray-500">
-                No users found
-              </td>
+              <th className="px-3 py-2 text-left">Username</th>
+              <th className="px-3 py-2 text-left">Email</th>
+              <th className="px-3 py-2 text-center">Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filteredUsers.length === 0 && (
+              <tr>
+                <td colSpan="3" className="text-center py-2 text-gray-500">
+                  No users found
+                </td>
+              </tr>
+            )}
+
+            {filteredUsers.map((u) => (
+              <tr key={u.id} className="border-t">
+                <td className="px-3 py-1">
+                  {editingUser?.id === u.id ? (
+                    <input
+                      type="text"
+                      value={editingUser.username}
+                      onChange={(e) =>
+                        setEditingUser({ ...editingUser, username: e.target.value })
+                      }
+                      className="px-1 py-1 border rounded w-full text-sm"
+                    />
+                  ) : (
+                    u.username
+                  )}
+                </td>
+                <td className="px-3 py-1">
+                  {editingUser?.id === u.id ? (
+                    <input
+                      type="email"
+                      value={editingUser.email}
+                      onChange={(e) =>
+                        setEditingUser({ ...editingUser, email: e.target.value })
+                      }
+                      className="px-1 py-1 border rounded w-full text-sm"
+                    />
+                  ) : (
+                    u.email
+                  )}
+                </td>
+                <td className="px-3 py-1 text-center space-x-1">
+                  {editingUser?.id === u.id ? (
+                    <>
+                      <button
+                        onClick={handleUpdate}
+                        className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleEdit(u)}
+                        className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u.id)}
+                        className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

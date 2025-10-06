@@ -91,7 +91,7 @@ export default function ManageUploads() {
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4">
       <h1 className="text-xl font-bold text-gray-700 mb-4 text-center">
-        Manage Posts
+        Manage User Posts
       </h1>
 
       <input

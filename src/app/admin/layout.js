@@ -7,6 +7,8 @@ export default function AdminLayout({ children }) {
 
   const tabs = [
     { name: "Dashboard", path: "/admin/dashboard" },
+    { name: "Manage Users", path: "/admin/users" },
+    { name: "User Uploads", path: "/admin/user-uploads" },
   ];
 
   return (
