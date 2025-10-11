@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, updateDoc, doc, addDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, addDoc, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { saveAs } from "file-saver";
 
@@ -19,7 +19,7 @@ export default function ReportsPage() {
       const snapshot = await getDocs(collection(db, "applications"));
       const apps = snapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((app) => !["approved", "declined"].includes(app.status)); // 🔹 hide approved/declined
+        .filter((app) => !["approved", "declined"].includes(app.status));
       setApplications(apps);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -33,10 +33,25 @@ export default function ReportsPage() {
       // Update application status
       await updateDoc(doc(db, "applications", id), { status });
 
+      // 🔹 If approved, set verified = true in users collection
+      if (status === "approved") {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", gmail));
+        const userSnapshot = await getDocs(q);
+
+        if (!userSnapshot.empty) {
+          const userDoc = userSnapshot.docs[0];
+          await updateDoc(doc(db, "users", userDoc.id), { verified: true });
+          console.log(`User ${gmail} marked as verified`);
+        } else {
+          console.warn(`No user found with email: ${gmail}`);
+        }
+      }
+
       // Add log entry
       await addDoc(collection(db, "logs"), {
         userID: "admin",
-        action: `User ${gmail} was verified (${status})`,
+        action: `User ${gmail} was ${status === "approved" ? "verified" : "declined"} (${status})`,
         timestamp: Date.now(),
       });
 
@@ -101,7 +116,11 @@ export default function ReportsPage() {
               <div className="flex gap-2 mt-2">
                 <button
                   className="px-3 py-1 bg-green-600 text-white rounded"
-                  onClick={() => updateStatus(app.id, "approved", app.gmail)}
+                  onClick={() => {
+                    if (confirm(`Following user will be verified: ${app.gmail}\n\nAre you sure you want to approve this application?`)) {
+                      updateStatus(app.id, "approved", app.gmail);
+                    }
+                  }}
                 >
                   Approve
                 </button>
