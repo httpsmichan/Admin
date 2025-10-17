@@ -9,7 +9,9 @@ import {
   doc,
   getDocs,
   serverTimestamp,
+  deleteField,
 } from "firebase/firestore";
+
 
 const InputRow = ({ values, setter, placeholder, keyPrefix, addField, removeField, updateField }) => {
   return (
@@ -74,10 +76,8 @@ export default function MushroomEncyclopediaPage() {
 
   const [uploading, setUploading] = useState(false);
 
-  // Firestore
   const [mushrooms, setMushrooms] = useState([]);
 
-  // helpers
   const addField = (setter) => setter((prev) => [...prev, ""]);
   const removeField = (setter, index) => setter((prev) => prev.filter((_, i) => i !== index));
   const updateField = (setter, index, value) =>
@@ -87,38 +87,35 @@ export default function MushroomEncyclopediaPage() {
       return newValues;
     });
 
-// Upload to Cloudinary
-const handleImageUpload = async (e) => {
-  const files = e.target.files;
-  if (!files.length) return;
+  const handleImageUpload = async (e) => {
+    const files = e.target.files;
+    if (!files.length) return;
 
-  setUploading(true);
-  const uploadedUrls = [];
+    setUploading(true);
+    const uploadedUrls = [];
 
-  for (const file of files) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "your_upload_preset"); // replace
-    formData.append("cloud_name", "your_cloud_name"); // replace
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "your_upload_preset"); // replace
+      formData.append("cloud_name", "your_cloud_name"); // replace
 
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/your_cloud_name/image/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      uploadedUrls.push(data.secure_url);
-    } catch (err) {
-      console.error("Upload failed:", err);
+      try {
+        const res = await fetch(`https://api.cloudinary.com/v1_1/your_cloud_name/image/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        uploadedUrls.push(data.secure_url);
+      } catch (err) {
+        console.error("Upload failed:", err);
+      }
     }
-  }
 
-  setImages((prev) => [...prev, ...uploadedUrls]);
-  setUploading(false);
-};
+    setImages((prev) => [...prev, ...uploadedUrls]);
+    setUploading(false);
+  };
 
-
-  // fetch mushrooms
   const fetchData = async () => {
     const querySnapshot = await getDocs(collection(db, "mushroom-encyclopedia"));
     const items = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -129,7 +126,6 @@ const handleImageUpload = async (e) => {
     fetchData();
   }, []);
 
-  // clear all fields (for new entry)
   const clearForm = () => {
     setMushroomName("");
     setDescription("");
@@ -168,38 +164,35 @@ const handleImageUpload = async (e) => {
     setLongTerm(m.longTerm || [""]);
     setReason(m.reason || "");
     setCharacteristics(m.characteristics || [""]);
-
   };
 
-  // submit new or update
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     let uploadedUrls = [...images];
 
-    // Upload selected files only when saving
-  if (selectedFiles.length > 0) {
-    setUploading(true);
-    for (const file of selectedFiles) {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", UPLOAD_PRESET);
-      formData.append("cloud_name", CLOUD_NAME);
+    if (selectedFiles.length > 0) {
+      setUploading(true);
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", UPLOAD_PRESET);
+        formData.append("cloud_name", CLOUD_NAME);
 
-      try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-        if (data.secure_url) uploadedUrls.push(data.secure_url);
-      } catch (err) {
-        console.error("Upload failed:", err);
+        try {
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.secure_url) uploadedUrls.push(data.secure_url);
+        } catch (err) {
+          console.error("Upload failed:", err);
+        }
       }
+      setUploading(false);
     }
-    setUploading(false);
-  }
 
     const baseData = {
       mushroomName,
@@ -211,6 +204,16 @@ const handleImageUpload = async (e) => {
       edibility,
       images: uploadedUrls,
       createdAt: serverTimestamp(),
+    };
+
+    const resetData = {
+      toxicity: deleteField(),
+      onset: deleteField(),
+      duration: deleteField(),
+      longTerm: deleteField(),
+      culinaryUses: deleteField(),
+      medicinalUses: deleteField(),
+      reason: deleteField(),
     };
 
     let extraData = {};
@@ -225,7 +228,7 @@ const handleImageUpload = async (e) => {
     try {
       if (selectedId) {
         const ref = doc(db, "mushroom-encyclopedia", selectedId);
-        await updateDoc(ref, { ...baseData, ...extraData });
+        await updateDoc(ref, { ...baseData, ...resetData, ...extraData });
         alert("✅ Mushroom updated!");
       } else {
         await addDoc(collection(db, "mushroom-encyclopedia"), { ...baseData, ...extraData });
@@ -240,7 +243,6 @@ const handleImageUpload = async (e) => {
     setLoading(false);
   };
 
-  // delete
   const handleDelete = async () => {
     if (!selectedId) return;
     if (!confirm("Delete this mushroom?")) return;
@@ -268,54 +270,51 @@ const handleImageUpload = async (e) => {
         </button>
       </div>
 
-      {/* Mushroom list as scrollable table */}
-<div className="mb-10">
-  <h3 className="text-lg font-semibold mb-2">Mushroom List</h3>
+      <div className="mb-10">
+        <h3 className="text-lg font-semibold mb-2">Mushroom List</h3>
 
- {/* 🔍 Search input */}
-<input
-  type="text"
-  placeholder="Search by name or edibility..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  className="mb-2 p-2 border rounded w-full max-w focus:outline-none focus:ring-2 focus:ring-blue-400"
-/>
+        {/* Search input */}
+        <input
+          type="text"
+          placeholder="Search by name or edibility..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-2 p-2 border rounded w-full max-w focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
 
-  <div className="border rounded overflow-auto" style={{ maxHeight: "200px" }}>
-    <table className="min-w-full text-sm">
-      <thead className="bg-gray-100 sticky top-0">
-        <tr>
-          <th className="px-3 py-2 text-left">Name</th>
-          <th className="px-3 py-2 text-left">Edibility</th>
-        </tr>
-      </thead>
-      <tbody>
-        {mushrooms
-          .filter((m) => {
-            const term = search.toLowerCase();
-            return (
-              m.mushroomName?.toLowerCase().includes(term) ||
-              m.edibility?.toLowerCase().includes(term)
-            );
-          })
-          .map((m) => (
-            <tr
-              key={m.id}
-              className={`cursor-pointer hover:bg-blue-100 ${
-                selectedId === m.id ? "bg-blue-200" : ""
-              }`}
-              onClick={() => handleSelect(m)}
-            >
-              <td className="px-3 py-2">{m.mushroomName}</td>
-              <td className="px-3 py-2">{m.edibility}</td>
-            </tr>
-          ))}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-
+        <div className="border rounded overflow-auto" style={{ maxHeight: "200px" }}>
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left">Name</th>
+                <th className="px-3 py-2 text-left">Edibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mushrooms
+                .filter((m) => {
+                  const term = search.toLowerCase();
+                  return (
+                    m.mushroomName?.toLowerCase().includes(term) ||
+                    m.edibility?.toLowerCase().includes(term)
+                  );
+                })
+                .map((m) => (
+                  <tr
+                    key={m.id}
+                    className={`cursor-pointer hover:bg-blue-100 ${
+                      selectedId === m.id ? "bg-blue-200" : ""
+                    }`}
+                    onClick={() => handleSelect(m)}
+                  >
+                    <td className="px-3 py-2">{m.mushroomName}</td>
+                    <td className="px-3 py-2">{m.edibility}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Full Form */}
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -445,73 +444,73 @@ const handleImageUpload = async (e) => {
         </div>
 
         {/* Images */}
-<div>
-  <label className="block font-medium mb-1">Images</label>
+        <div>
+          <label className="block font-medium mb-1">Images</label>
 
-  {selectedId ? (
-    <div className="space-y-2">
-      {images.length > 0 ? (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {images.map((url, i) => (
-            <div key={i} className="relative">
-              <img
-                src={url}
-                alt={`uploaded-${i}`}
-                className="w-20 h-20 object-cover rounded border"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setImages((prev) => prev.filter((_, index) => index !== i))
-                }
-                className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
-              >
-                ×
-              </button>
+          {selectedId ? (
+            <div className="space-y-2">
+              {images.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {images.map((url, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={url}
+                        alt={`uploaded-${i}`}
+                        className="w-20 h-20 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImages((prev) => prev.filter((_, index) => index !== i))
+                        }
+                        className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">No images uploaded</p>
+              )}
             </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-500 text-sm">No images uploaded</p>
-      )}
-    </div>
-  ) : (
-    <>
-      <input
-        type="file"
-        multiple
-        accept="image/*"
-        onChange={(e) => setSelectedFiles([...e.target.files])}
-        className="border px-3 py-2 rounded w-full"
-      />
+          ) : (
+            <>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => setSelectedFiles([...e.target.files])}
+                className="border px-3 py-2 rounded w-full"
+              />
 
-      {selectedFiles.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {Array.from(selectedFiles).map((file, i) => (
-            <div key={i} className="relative">
-              <img
-                src={URL.createObjectURL(file)}
-                alt={`preview-${i}`}
-                className="w-20 h-20 object-cover rounded border"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedFiles((prev) =>
-                    prev.filter((_, index) => index !== i)
-                  )
-                }
-                className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+              {selectedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Array.from(selectedFiles).map((file, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`preview-${i}`}
+                        className="w-20 h-20 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedFiles((prev) =>
+                            prev.filter((_, index) => index !== i)
+                          )
+                        }
+                        className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
-      )}
-    </>
-  )}
-</div>
 
         {/* Buttons */}
         <div className="flex gap-2">
@@ -530,7 +529,7 @@ const handleImageUpload = async (e) => {
             >
               Delete
             </button>
-          )}
+            )}
         </div>
       </form>
     </div>
