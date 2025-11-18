@@ -11,6 +11,7 @@ export default function AdminLayout({ children }) {
     { name: "User Uploads", path: "/admin/user-uploads" },
     { name: "DVO Mushrooms", path: "/admin/mushroom-encyclopedia" },
     { name: "Verification Requests", path: "/admin/verification-requests" },
+    { name: "Logs", path: "/admin/logs" },
   ];
 
   return (

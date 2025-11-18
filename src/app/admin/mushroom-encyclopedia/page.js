@@ -260,7 +260,10 @@ export default function MushroomEncyclopediaPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl text-center font-bold text-gray-700 mb-4">Mushroom Encyclopedia</h2>
+       <h2 className="text-xl font-bold text-gray-700 mb-4 flex justify-center">
+  Mushroom Encyclopedia
+</h2>
+
         <button
           type="button"
           onClick={clearForm}
