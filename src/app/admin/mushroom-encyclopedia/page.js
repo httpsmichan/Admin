@@ -65,6 +65,7 @@ export default function MushroomEncyclopediaPage() {
   const [onset, setOnset] = useState([""]);
   const [duration, setDuration] = useState([""]);
   const [longTerm, setLongTerm] = useState([""]);
+  const [firstAid, setFirstAid] = useState([""]);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
@@ -144,6 +145,7 @@ export default function MushroomEncyclopediaPage() {
     setSelectedId(null);
     setCharacteristics([""]);
     setSelectedFiles([]);
+    setFirstAid([""]);
   };
 
   // when selecting mushroom
@@ -162,6 +164,7 @@ export default function MushroomEncyclopediaPage() {
     setOnset(m.onset || [""]);
     setDuration(m.duration || [""]);
     setLongTerm(m.longTerm || [""]);
+    setFirstAid(m.FirstAid || [""]);
     setReason(m.reason || "");
     setCharacteristics(m.characteristics || [""]);
   };
@@ -218,7 +221,8 @@ export default function MushroomEncyclopediaPage() {
 
     let extraData = {};
     if (edibility === "poisonous") {
-      extraData = { reason, toxicity, onset, duration, longTerm };
+      extraData = { reason, toxicity, onset, duration, longTerm, FirstAid: firstAid };
+
     } else if (["ediblew", "inedible", "inediblemed"].includes(edibility)) {
       extraData = { reason, culinaryUses, medicinalUses };
     } else {
@@ -397,6 +401,19 @@ export default function MushroomEncyclopediaPage() {
               <label className="block font-medium mb-1">Long-term Effects</label>
               <InputRow values={longTerm} setter={setLongTerm} placeholder="Enter long-term effects" keyPrefix="long-term" addField={addField} removeField={removeField} updateField={updateField} />
             </div>
+            <div>
+              <label className="block font-medium mb-1">First Aid</label>
+              <InputRow
+                values={firstAid}
+                setter={setFirstAid}
+                placeholder="Enter first aid info"
+                keyPrefix="first-aid"
+                addField={addField}
+                removeField={removeField}
+                updateField={updateField}
+              />
+            </div>
+
           </>
         ) : ["ediblew", "inedible", "inediblemed"].includes(edibility) ? (
           <>
